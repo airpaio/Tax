@@ -1,0 +1,36 @@
+---
+title: 'U.S. Tax Reform:  A Look at the Flat Tax Model'
+author: "Cory R. Robinson"
+date: "August 5, 2015"
+output: html_document
+runtime: shiny
+---
+
+
+With the 2016 U.S. Presidential Election under way, one thing that many candidates have already begun talking about is tax reform.  During my brief time as a tax preparer, I barely scratched the surface of the tax policy as I calculated capital gains to be taxed and combed through the list of itemized deductions that could be taken in the thousand or so pages of the Master Tax Guide.  Fortunately, I didn't have to look at the daunting 74,608 page long U.S. Federal Tax Code!  Admittedly, a tax code this long is quite a complex machine filled with many different ways of taxing and crediting.  Taxes are one of the necessities of life that we have all grown to love to hate.  As complex a machine that the tax code is, people have and will continue to find loopholes in the code in an attempt to pay the least amount of taxes possible by deducting everything they can, including the kitchen sink!  
+
+Thus far in the 2016 race, the proposed tax reform plans range from re-writing a few pages of the tax code to completely re-writing the entire tax code and eliminating several thousand pages of tax code garbage.  Here are some ideas of a few of the candidates in the 2016 race:
+
+* **Hillary Clinton** - rewriting a few pages to include an increase in short-term capital gains taxes along with introducing some tax credits related to profit sharing, apprenticeships, and renewable energy.
+* **Ben Carson** - rewriting entire tax code and only implementing a 10% flat tax rate.
+* **Rand Paul** - rewriting most of the tax code and implementing a 14.5% flat tax rate, with some credits and deductions similar to those in the current tax code.
+* **Mike Huckabee** - rewriting entire tax code and proposing the Fair Tax model, which essentially eliminates the income tax, and the only tax that anyone will pay is a sales tax that is larger than any sales taxes that we currently have.
+
+Since my focus here is to inform voters of the mechanics of an extensive tax reform, let's take a closer look at the various flat tax models.
+
+First off, I would like to note that there are [several countries](https://en.wikipedia.org/wiki/Flat_tax#Around_the_world) around the world, and even some of our own [U.S. states](https://en.wikipedia.org/wiki/Flat_tax#At_the_state_or_provincial_level) that have implemented successful flat tax models[^1].
+
+**True Flat Tax**\
+One simple model that we will look at is the **True Flat Tax** model.  This is a constant tax rate on all gross income without any deductions.  I can only imagine that this model is what Ben Carson has in mind with his 10% flat tax proposal which he claims is based upon The Bible and his economists.  Ben Carson goes on to say that "eliminating the loopholes and deductions," the flat tax rate should fall in the 10-15% range, while Chris tells him that research by the Tax Policy Center suggests that a flat tax of 20-25% would be more reasonable to meet the current levels of tax revenue [^2].  Let's look at some numbers.
+
+According to 2012 income tax [data](http://www.irs.gov/uac/SOI-Tax-Stats---Individual-Statistical-Tables-by-Size-of-Adjusted-Gross-Income#_grp1)[^3] published by the IRS, total U.S. tax revenue from individual returns was reported to be $1,188,027,000,000.  An approximation of the total gross income of Americans without any deductions or adjustments was reported as $9,100,131,000,000[^4].  A simple calculation shows that the flat tax needed to meet the 2012 individual tax revenue levels would be about 13%.  Not bad, it seems that Dr. Carson payed attention in algebra class as well as church.
+
+Does a 13% true flat tax hurt anyone?  Well, let's look at an example of your 17 year old son who wants to work a summer job before his senior year in high school begins.  He may be getting paid $10 per hour and working 40 hours a week for 10 weeks.  That comes out to be a gross income of $4,000.  Under our current tax structure, he would claim the standard deduction of $6,300 leaving him with no taxable income, and thus he wouldn't pay any taxes.  However, under the true flat tax of 13% where deductions don't exist, he would end up paying $520 in taxes.  That's some serious gas money being taken out of the pocket of the high school senior!  
+
+
+
+
+[^1]: Wikipedia article on Flat Tax - https://en.wikipedia.org/wiki/Flat_tax
+[^2]: An Interview with Fox News's Chris Wallace - http://mediamatters.org/video/2015/05/10/foxs-chris-wallace-exposes-truth-behind-ben-car/203587
+[^3]: All Returns: Selected Income and Tax Items 2012 - http://www.irs.gov/uac/SOI-Tax-Stats---Individual-Statistical-Tables-by-Size-of-Adjusted-Gross-Income#_grp1
+[^4]: Adjusted Gross Income less deficit - an approximation of gross income without deductions and adjustments. http://www.irs.gov/pub/irs-soi/12insec4.pdf
