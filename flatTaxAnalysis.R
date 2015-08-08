@@ -45,7 +45,7 @@ print(bP)
 
 
 flatRate <- .13
-income <- seq(1,200000,by=400)
+income <- seq(1,150000,by=100)
 flatTax <- flatRate*income
 dfTFT <- data.frame(income, flatTax)
 
@@ -60,7 +60,7 @@ ssRate <- .042
 medRate <- .0145
 
 #run 'foreach' in parallel
-c1 <- makeCluster(6)
+c1 <- makeCluster(4)
 registerDoParallel(c1)
 #ssMedTaxLow <- foreach (i = iter(income), .combine=c, .multicombine=TRUE) %:%
 #    when(i <= 110100) %dopar% i*(ssRate+medRate)
@@ -105,12 +105,15 @@ dfTFT$pTax <- pTax
 p <- ggplot(dfTFT) +
     geom_line(aes(x=dfTFT$income, y=dfTFT$flatTax, color="13% Flat Tax")) +
     geom_line(aes(x=dfTFT$income, y=dfTFT$pTax, color="Tax Bracket Model")) +
+    scale_color_discrete(name = "Tax Models",
+                         labels = c("13% Flat Tax", "Tax Bracket Model")) +
     ylab("Tax (dollars)") +
     xlab("Income (dollars)") +
     ggtitle("13% Flat Tax vs Progressive Tax Bracket Model \n
             Model Assumes Year 2012 Single Person Claiming One
 Exemption and Social Security/Medicare Tax") +
     theme(axis.text.x=element_text(size=13),
+          axis.text.y=element_text(size=13),
           axis.title.x=element_text(size=15),
           axis.title.y=element_text(size=15),
           plot.title=element_text(size=18))
