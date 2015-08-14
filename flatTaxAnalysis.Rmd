@@ -5,7 +5,31 @@ date: "August 5, 2015"
 output: html_document
 runtime: shiny
 ---
+```{r setup, echo=FALSE, message=FALSE, warning=FALSE}
+library(XLConnect)
+library(ggplot2)
+library(reshape2)
+library(scales)
+library(foreach)
+library(doParallel)
+library(geiger)
+library(sp)
+library(rgeos)
+library(Bolstad2)
+library(knitr)
+library("dplyr")
+setwd("~/Research/Tax/data")
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, 
+                      cache=TRUE, fig.width=20, fig.height=12)
 
+# load the data
+df <- readWorksheetFromFile("clean2012.xls", 
+                            sheet=1, 
+                            startRow = 2,
+                            endCol = 40)
+df <- data.frame(df)
+df <- df[-1,]
+```
 
 With the 2016 U.S. Presidential Election under way, one thing that many candidates have already begun talking about is tax reform.  During my brief time as a tax preparer, I barely scratched the surface of the tax policy as I calculated capital gains to be taxed and combed through the list of itemized deductions that could be taken in the thousand or so pages of the Master Tax Guide.  Fortunately, I didn't have to look at the daunting 74,608 page long U.S. Federal Tax Code!  Admittedly, a tax code this long is quite a complex machine filled with many different ways of taxing and crediting.  Taxes are one of the necessities of life that we have all grown to love to hate.  As complex a machine that the tax code is, people have and will continue to find loopholes in the code in an attempt to pay the least amount of taxes possible by deducting everything they can, including the kitchen sink!  
 
@@ -25,10 +49,198 @@ One simple model that we will look at is the **True Flat Tax** model.  This is a
 
 According to 2012 income tax [data](http://www.irs.gov/uac/SOI-Tax-Stats---Individual-Statistical-Tables-by-Size-of-Adjusted-Gross-Income#_grp1)[^3] published by the IRS, total U.S. tax revenue from individual returns was reported to be $1,188,027,000,000.  An approximation of the total gross income of Americans without any deductions or adjustments was reported as $9,100,131,000,000[^4].  A simple calculation shows that the flat tax needed to meet the 2012 individual tax revenue levels would be about 13%.  Not bad, it seems that Dr. Carson payed attention in algebra class as well as church.
 
-Does a 13% true flat tax hurt anyone?  Well, let's look at an example of your 17 year old son who wants to work a summer job before his senior year in high school begins.  He may be getting paid $10 per hour and working 40 hours a week for 10 weeks.  That comes out to be a gross income of $4,000.  Under our current tax structure, he would claim the standard deduction of $6,300 leaving him with no taxable income, and thus he wouldn't pay any taxes.  However, under the true flat tax of 13% where deductions don't exist, he would end up paying $520 in taxes.  That's some serious gas money being taken out of the pocket of the high school senior!  
+Does a 13% true flat tax hurt anyone?  Well, let's look at an example of 17 year old Joe Blow who wants to work a summer job before his senior year in high school begins.  He may be getting paid $10 per hour and working 40 hours a week for 10 weeks.  That comes out to be a gross income of $4,000.  Under our current tax structure, he would claim the standard deduction of $6,300 leaving him with no taxable income, and thus he wouldn't pay any taxes.  However, under the true flat tax of 13% where deductions don't exist, he would end up paying $520 in taxes.  That's some serious gas money being taken out of Joe's pocket!
+
+In Econ 101, we learned to assume that we as humans are rational decision makers.  Now, suppose Joe is faced with two options regarding his tax situation; paying no taxes due to a generous exemption and standard deduction or paying $520 in taxes.  Of course, being the rational human being that Joe is, he would choose to pay zero taxes.
+
+```{r flatVSprog}
+# flat tax and income info
+flatRate <- .13
+income <- seq(0,150000,by=100)
+flatTax <- flatRate*income
 
 
 
+# standard deductions
+single <- 5950
+married <- 11900
+hOfHouse <- 8700
+
+# ssTax for 2012 was 4.2% with max earnings of 110100
+# medCare tax had no max at 1.45%
+ssRate <- .042
+medRate <- .0145
+
+
+incomeRate <- function(income, deduction, rate, exemptions, ssRate, medRate){
+    (income - (exemptions*3800) - deduction)*rate + income*(ssRate+medRate)
+}
+
+brackets <- c(0, 8700, 35350, 71350, 108725, 194175)
+brkRates <- c(.1, .15, .25, .28, .33, .35)
+
+# get bases for the progressive tax structure
+progTaxes <- sapply(1:length(brackets), function(r) brkRates[r]*(brackets[r+1]-brackets[r]))
+progTaxes <- progTaxes[-length(progTaxes)]
+
+
+# in parallel, get values of tax for each do;;ar of gross income
+#run 'foreach' in parallel
+c1 <- makeCluster(4)
+registerDoParallel(c1)
+b1 <- foreach (i = iter(income), .combine=c, .multicombine=TRUE) %:%
+    when(i >= 0 & i <= 8700) %dopar% incomeRate(i, single, rate=.1, exemptions=1,
+                                                ssRate=.042, medRate=.0145)
+b2 <- foreach (i = iter(income), .combine=c, .multicombine=TRUE) %:%
+    when(i >= 8701 & i <= 35350) %dopar% (progTaxes[1] + 
+                                              incomeRate(i-8701, single, rate=.15,
+                                                         exemptions=1, ssRate=.042, medRate=.0145))
+b3 <- foreach (i = iter(income), .combine=c, .multicombine=TRUE) %:%
+    when(i >= 35351 & i <= 71350) %dopar% (sum(progTaxes[1:2]) +
+                                               incomeRate(i-35351, single, rate=.25,
+                                                          exemptions=1, ssRate=.042, medRate=.0145))
+b4 <- foreach (i = iter(income), .combine=c, .multicombine=TRUE) %:%
+    when(i >= 71351 & i <= 108725) %dopar% (sum(progTaxes[1:3]) + 
+                                                incomeRate(i-71351, single, rate=.28,
+                                                           exemptions=1, ssRate=.042,medRate=.0145))
+b5 <- foreach (i = iter(income), .combine=c, .multicombine=TRUE) %:%
+    when(i >= 108726 & i <= 110100) %dopar% (sum(progTaxes[1:4]) + 
+                                                 incomeRate(i-108726, single, rate=.33,
+                                                            exemptions=1, ssRate=.042, medRate=.0145))
+b5.1 <- foreach (i = iter(income), .combine=c, .multicombine=TRUE) %:%
+    when(i >= 110101 & i <= 194175) %dopar% (sum(progTaxes[1:4]) + 
+                                                 incomeRate(i-108726, single, rate=.33,
+                                                            exemptions=1, ssRate=0, medRate=.0145))
+b6 <- foreach (i = iter(income), .combine=c, .multicombine=TRUE) %:%
+    when(i >= 194176) %dopar% (sum(progTaxes[1:5]) + incomeRate(i-194176, single, rate=.33,
+                                                                exemptions=1, ssRate=0, medRate=.0145))
+iRate <- c(b1,b2,b3,b4,b5,b5.1,b6)
+
+# pTax = progressive tax bracket structure
+pTax <- ifelse(iRate <= 0, 0, iRate)
+dfTFT <- data.frame(income, flatTax, pTax)
+```
+
+Comparing the 13% true flat tax to an oversimplified version of our progressive tax bracket structure in the figure below, we can see that individuals earning an income up to around $45,000 a year might not be too happy paying taxes under this True Flat Tax model.
+
+```{r plotFlatProgLine}
+linePlot <- ggplot(dfTFT, aes(x=income)) +
+    geom_line(aes(y=flatTax, color="13% Flat Tax")) +
+    geom_line(aes(y=pTax, color="Tax Bracket Model")) +
+    scale_color_discrete(name = "Tax Models",
+                         labels = c("13% Flat Tax", "Tax Bracket Model")) +
+    ylab("Tax (dollars)") +
+    xlab("Income (dollars)") +
+    ggtitle("13% Flat Tax vs Progressive Tax Bracket Model \n
+            Model Assumes Year 2012 Single Person Claiming One
+            Exemption and Social Security/Medicare Tax") +
+    theme(axis.text.x=element_text(size=15),
+          axis.text.y=element_text(size=15),
+          axis.title.x=element_text(size=18),
+          axis.title.y=element_text(size=18),
+          plot.title=element_text(size=20))
+linePlot
+```
+
+```{r trueFlatStats}
+##### Get the Flat tax Revenue for 13%
+df$flatTaxRev <- .13*df$AGIlessDeficit
+
+# upper range of flat tax revenue for incomes < 50000
+upperFlatTaxRev <- sum(df$flatTaxRev[2:9])
+
+# lower range of flat tax revenue for incomes < 50000
+lowerFlatTaxRev <- sum(df$flatTaxRev[2:8])
+
+# average flat tax per person
+avgFlatTax <- upperFlatTaxRev/(sum(df$grossNumberOfReturns[2:9]))
+df$avgFlatTaxPerPerson <- df$flatTaxRev/df$grossNumberOfReturns
+```
+
+In fact, using the comparison of these two tax models for our 2012 data, we estimate that the government would have received between $188 billion and $251 billion more in tax revenue under the 13% flat tax model than they would under our current progressive tax model for persons making less than $50,000 a year.  The following figure shows a side-by-side comparison of the 13% True Flat Tax and the current Progressive Tax revenues for each AGI level in our 2012 data.  Here we can see that the 13% True Flat Tax dominates in tax revenue up to around the $100-200K window where it starts to become dwarfed by the progressive tax revenue.  Hooray for the wealthy, and ouch if you're not quite living the American Dream yet.
+
+```{r barPlot1}
+##### create 'dodged' barplot of tax revenues for each income range for
+## bot the flat tax and the 2012 progressive tax revenues
+dfRevs <- melt(data.frame("Progressive Tax"=df$tax[2:length(df$tax)],
+                          "13 Percent Flat Tax"=df$flatTaxRev[2:length(df$flatTaxRev)],
+                          Income=df$AGI[2:length(df$AGI)]),
+               variable.name="Model")
+
+
+taxRevPlot <- ggplot(dfRevs, aes(Income, value, fill=Model)) +
+    geom_bar(position="dodge", stat="identity") +
+    ylab("Tax Revenue") +
+    ggtitle("Actual 2012 Progressive Tax vs. 13% True Flat Tax") +
+    scale_x_discrete(name="AGI Level", labels=df$AGI[2:length(df$AGI)],
+                     limits=df$AGI[2:length(df$AGI)]) +
+    scale_y_continuous(labels=dollar) +
+    theme(axis.text.x=element_text(angle=90, size=13),
+          axis.title.x=element_text(size=15),
+          axis.title.y=element_text(size=15),
+          plot.title=element_text(size=18))
+
+taxRevPlot
+```
+
+
+```{r, echo = FALSE, cache=FALSE}
+shinyApp(
+  
+  ui = fluidPage(
+    selectInput("region", "Region:", 
+                choices = colnames(WorldPhones)),
+    plotOutput("phonePlot")
+  ),
+  
+  server = function(input, output) {
+    output$phonePlot <- renderPlot({
+      barplot(WorldPhones[,input$region]*1000, 
+              ylab = "Number of Telephones", xlab = "Year")
+    })
+  },
+  
+  options = list(height = 500)
+)
+```
+
+
+
+## The Post Card Tax Return
+>We should let taxes become so simple that they could be filled out on a postcard. <cite>Ted Cruz (R-TX), USA Today, October 19, 2014</cite>
+
+>This simple 20% flat tax will allow Americans to file their taxes on a postcard. <cite>Rick Perry (R-TX), The Wall Street Journal, October 25, 2011</cite>
+
+Does simplifying the federal tax code so much that we can file our tax return information on a few lines of a postcard sound good?  Well, it’s hardly an original idea by our presidential hopefuls.  Based on their statements, I would say that their ideas on tax reform are heavily borrowed from the idea that “tax forms really can fit on postcards” that Robert Hall and Alvin Rabushka of the Hoover Institution have proposed in their book [The Flat Tax](http://www.google.com/url?q=http%3A%2F%2Fwww.hooverpress.org%2Fproductdetails.cfm%3FPC%3D1274&sa=D&sntz=1&usg=AFQjCNESVCToAoD1idKhPnqPJjyogZoO1g) in 1985.
+
+The Hall-Rabushka (HR) Flat Tax model is actually quite simple while still allowing for a generous exemption and standard deduction for taxpayers.  While HR models both an individual and a business tax (both of which are supposed to fit on a postcard) we will only look at the individual tax model here and save the business tax for another discussion another day.  The HR model can be summed up into just a few points:
+
+* **Compensation** = Wages & Salary + Pensionions and Retirement Benefits
+* **Deductions** = Standard Deduction - (Number of Exemptions \* Exemption dollar amount)
+* **Taxable Income** = Compensation - Deductions
+* **Tax** = flat tax percentage of taxable income    
+
+Note that compensation does not include any income such as interest, dividends, capital gains, etc.  Just a simple earned income plus any private pensions you receive.  This model also wipes out all of those loopholes and deductions such as medical expenses, interest paid; just a simple standard deduction that should be quite generous and rise with the cost of living.  In fact, HR pointed out that the deductions for a family of four in 1995 would be $25,500.  Broken down these deductions are:
+
+* in 1995 dollars
+* $16,500 married filing jointly
+* $9,500 single
+* $14,000 single head of household
+* $4,500 for each other dependent you claim (not including you or your spouse)
+
+Now, I'm not sure how HR came up with these numbers, and they are slightly higher than the standard deduction amounts that the IRS published in 1995.  We will attempt to use these amounts adjusted with the Consumer Price Index to 2012 dollars to compare with our data.  The adjusted standard deduction amounts are:
+
+* CPI adjusted for 2012 dollars and rounded to the nearest $100
+* $24,900 married filing jointly
+* $14,300 single
+* $21,100 single head of household
+* $6,800 for each other dependent you claim (not including you or your spouse)
+
+Under these deductions, a family of four in 2012 would be allowed deductions of $38,500, which may or may not be a reasonable estimate?  For comparison, Rand Paul's (R-KY) is proprosing a similar tax model in which a family of four would be allowed $50,000 in deductions, but we'll get back to Rand Paul's proposal in just a bit.
+
+Under this tax model, HR suggested that in 1995 the flat tax rate would be 19%. CAN WE ESTIMATE A FLAT TAX RATE BASED ON OUR 2012 DATA?
+
+How would you fare under this tax system?  Go ahead and fill in your info in the boxes below and see how much taxes you would have to pay under this system.
 
 [^1]: Wikipedia article on Flat Tax - https://en.wikipedia.org/wiki/Flat_tax
 [^2]: An Interview with Fox News's Chris Wallace - http://mediamatters.org/video/2015/05/10/foxs-chris-wallace-exposes-truth-behind-ben-car/203587
