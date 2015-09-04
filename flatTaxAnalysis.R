@@ -14,8 +14,7 @@ setwd("~/Research/Tax/data")
 
 df <- readWorksheetFromFile("clean2012.xls", 
                             sheet=1, 
-                            startRow = 2,
-                            endCol = 40)
+                            startRow = 2)
 
 df <- data.frame(df)
 df <- df[-1,]
@@ -50,7 +49,7 @@ bP <- barPlot(dat=df, xvar=df$AGI, yvar=df$taxableIncome, xlabel="AGI Level",
 
 # flat tax and income info
 flatRate <- .13
-income <- seq(0,150000,by=100)
+income <- seq(0,50000,by=100)
 flatTax <- flatRate*income
 
 
@@ -184,3 +183,110 @@ taxRevPlot <- ggplot(dfRevs, aes(Income, value, fill=Model)) +
 
 
 print(taxRevPlot)
+
+
+
+#######
+# post-card return modeling
+
+# define salary's percentage of gross income for each AGI interval
+df$salPercentOfGross <- df$salaryWages/df$AGIlessDeficit
+
+# get married file jointly (mfj + mfs + ss) gross income percentage 
+# of total gross income
+marriedPercentageOfGross <- (sum(df$mfjAGIlessDeficit) + sum(df$mfsAGIlessDeficit) +
+                                 sum(df$ssAGIlessDeficit))/sum(df$AGIlessDeficit)
+singlePercentageOfGross <- sum(df$sAGIlessDeficit)/sum(df$AGIlessDeficit)
+hohPercentageOfGross <- sum(df$hohAGIlessDeficit)/sum(df$AGIlessDeficit)
+
+# estimate salary based on filing status by multiplying 
+# gross income for each filing status by the salary percentage of gross.
+mfjSalPercentOfGross <- df$salPercentOfGross*(df$mfjAGIlessDeficit +
+                                                  df$mfsAGIlessDeficit +
+                                                  df$ssAGIlessDeficit)
+sSalPercentOfGross <- df$salPercentOfGross*df$sAGIlessDeficit
+hohSalPercentOfGross <- df$salPercentOfGross*df$hohAGIlessDeficit
+
+totalMfjSalPercentOfGross <- sum(mfjSalPercentOfGross)
+totalSSalPercentOfGross <- sum(sSalPercentOfGross)
+totalHohSalPercentOfGross <- sum(hohSalPercentOfGross)
+
+# in the same way as above, estimate pensions for each 
+# of the filing statuses
+# define pensions & annuities percentage of gross income 
+# for each AGI interval
+df$penPercentOfGross <- df$amtOfIraPenAnn/df$AGIlessDeficit
+
+# estimate pensions based on filing status by multiplying 
+# gross income for each filing status by the pension percentage of gross.
+mfjPenPercentOfGross <- df$penPercentOfGross*(df$mfjAGIlessDeficit +
+                                                  df$mfsAGIlessDeficit +
+                                                  df$ssAGIlessDeficit)
+sPenPercentOfGross <- df$penPercentOfGross*df$sAGIlessDeficit
+hohPenPercentOfGross <- df$penPercentOfGross*df$hohAGIlessDeficit
+
+totalMfjPenPercentOfGross <- sum(mfjPenPercentOfGross)
+totalSPenPercentOfGross <- sum(sPenPercentOfGross)
+totalHohPenPercentOfGross <- sum(hohPenPercentOfGross)
+
+
+# now lets estimate the number of exemptions for each filing status.
+# we will just use the mean number of exemptions for each filing status.
+# combining all married filing status info
+df$mExemptionsAmt <- df$mfjExemptionsAmt + df$mfsExemptionsAmt +
+    df$ssExemptionsAmt
+
+df$mTotalSalReturns <- df$numSalMfj + df$numSalMfs + df$numSalSs
+df$mTotalPenReturns <- df$numPensMfj + df$numPensMfs + df$numPensSs
+
+# these are examptions for dependents of each filing status
+mExemptions <- sum(df$numExemDepMfj) + sum(df$numExemDepMfs) + sum(df$numExemDepSs)
+sExemptions <- sum(df$numExemDepS)
+hohExemptions <- sum(df$numExemDepHoh)
+
+# this model uses actual salary data and weights the standard deductions relative
+# to the number of tax returns for each filing status.
+pCardTaxableIncome <- sum(df$salaryWages) + sum(df$amtOfIraPenAnn) -
+    (14300*sum(df$numSalS) + 24900*sum(df$mTotalSalReturns) +
+         21100*sum(df$numSalHoh)) -
+    6800*(sExemptions + mExemptions + hohExemptions)
+
+# estimated postcard tax rate
+postCardTaxRate <- sum(df$tax)/pCardTaxableIncome
+
+
+
+
+#########
+# Rand Paul proposal
+
+w <- sum(df$salaryWages)
+d <- sum(df$ordDividends) + sum(df$qualDividends)
+cg <- sum(df$capGainDist) + sum(df$capAssetsSaleGain) -
+    sum(df$capAssetsSaleLoss)
+r <- sum(df$rentsIncome) + sum(df$rentsFarmIncome) -
+    sum(df$rentsLoss) - sum(df$rentsFarmLoss)
+i <- sum(df$interestTaxable)
+cc <- sum(df$charitible)
+m <- sum(df$mortgageIntPaid)
+eic <- sum(df$EIC)
+ctc <- sum(df$childTaxCredit)
+std <- 15000  # std deduction per filer
+exmp <- 5000  # exemption amt per exemption (dependents + filers)
+
+# to meet 2012 tax revenue, solve for flat tax rate...
+solvedTaxRate <- solve(w+d+cg+r+i-
+                           cc-m-eic-ctc-
+                           (std*sum(df$mfjTotalReturns)*2)-
+                           (std*sum(df$hohTotalReturns))-
+                           (std*sum(df$sTotalReturns))-
+                           exmp*sum(df$exemptionsTotal),
+                       sum(df$tax))
+
+# compare to using pauls 14.5% rate
+paulsTaxRev <- .145*(w+d+cg+r+i-cc-m-eic-ctc-
+                         (std*sum(df$mfjTotalReturns)*2)-
+                         (std*sum(df$hohTotalReturns))-
+                         (std*sum(df$sTotalReturns))-
+                         exmp*sum(df$exemptionsTotal))
+diff <- paulsTaxRev-sum(df$tax)

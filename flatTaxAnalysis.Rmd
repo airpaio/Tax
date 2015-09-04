@@ -12,12 +12,12 @@ library(reshape2)
 library(scales)
 library(foreach)
 library(doParallel)
-library(geiger)
-library(sp)
-library(rgeos)
-library(Bolstad2)
+#library(geiger)
+#library(sp)
+#library(rgeos)
+#library(Bolstad2)
 library(knitr)
-library("dplyr")
+library(dplyr)
 setwd("~/Research/Tax/data")
 knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, 
                       cache=TRUE, fig.width=20, fig.height=12)
@@ -56,7 +56,7 @@ In Econ 101, we learned to assume that we as humans are rational decision makers
 ```{r flatVSprog}
 # flat tax and income info
 flatRate <- .13
-income <- seq(0,150000,by=100)
+income <- seq(0,50000,by=100)
 flatTax <- flatRate*income
 
 
@@ -184,29 +184,7 @@ taxRevPlot
 ```
 
 
-```{r, echo = FALSE, cache=FALSE}
-shinyApp(
-  
-  ui = fluidPage(
-    selectInput("region", "Region:", 
-                choices = colnames(WorldPhones)),
-    plotOutput("phonePlot")
-  ),
-  
-  server = function(input, output) {
-    output$phonePlot <- renderPlot({
-      barplot(WorldPhones[,input$region]*1000, 
-              ylab = "Number of Telephones", xlab = "Year")
-    })
-  },
-  
-  options = list(height = 500)
-)
-```
-
-
-
-## The Post Card Tax Return
+### The Post Card Tax Return
 >We should let taxes become so simple that they could be filled out on a postcard. <cite>Ted Cruz (R-TX), USA Today, October 19, 2014</cite>
 
 >This simple 20% flat tax will allow Americans to file their taxes on a postcard. <cite>Rick Perry (R-TX), The Wall Street Journal, October 25, 2011</cite>
@@ -236,11 +214,105 @@ Now, I'm not sure how HR came up with these numbers, and they are slightly highe
 * $21,100 single head of household
 * $6,800 for each other dependent you claim (not including you or your spouse)
 
-Under these deductions, a family of four in 2012 would be allowed deductions of $38,500, which may or may not be a reasonable estimate?  For comparison, Rand Paul's (R-KY) is proprosing a similar tax model in which a family of four would be allowed $50,000 in deductions, but we'll get back to Rand Paul's proposal in just a bit.
+Under these deductions, a family of four in 2012 would be allowed deductions of $52,100, which may or may not be a reasonable estimate?  For comparison, Rand Paul's (R-KY) is proprosing a similar tax model in which a family of four would be allowed $50,000 in deductions, but we'll get back to Rand Paul's proposal in just a bit.
 
-Under this tax model, HR suggested that in 1995 the flat tax rate would be 19%. CAN WE ESTIMATE A FLAT TAX RATE BASED ON OUR 2012 DATA?
+For the purpose of calculating wages and salaries in this individual tax model, we will assume that farm income will be counted as a business income rather than an individual wage or salary, with the exception of farmhands earning a wage which we will assume has beesn reported as part of the wage and salary data in our 2012 dataset.
 
-How would you fare under this tax system?  Go ahead and fill in your info in the boxes below and see how much taxes you would have to pay under this system.
+Under this tax model, HR suggested that in 1995 the flat tax rate should be 19% (with the proposed standard deductions mentioned above for 1995.)  However, the model we formulated using our 2012 IRS tax data estimated that the flat tax rate should be about 28% to meet the same tax revenue we had in 2012.  Now, keep in mind that this would only tax salaries, wages, and private pensions.  In 2012, the number of tax returns filed that reported earning a salary or a wage accounted for about 82% of all returns filed.  Would the other 18% of filers just not pay any taxes?  Who are these 18%?  They are the day traders who make captal gains on selling stocks.  They are the ones who earn interest and dividends.  They are the ones who walk out to the mailbox to get their fat royalty check.  They could also be the ones who own big companies and are so wealthy that they are able to live off of a salary of $1 a year.  Talk about a major loophole to this simple tax model!
+
+
+### The Rand Paul Proposal - A Fair and Flat Tax?
+Senator Rand Paul (R-KY) has already released details of his proposal to overhaul the U.S. tax code.  An anouncement and some of the details of his plan can be found on his campaign website [here](https://randpaul.com/issue/taxes).
+
+A quick rundown of Paul's plan is to impose a flat tax of 14.5% on personal income of salaries & wages, dividends, capital gains, rents, and interest, while doing away with all deductions except for mortgage interest paid and charitible contributions.  Also, a very generous standard deduction of $15,000 is proposed for each filer plus $5,000 for each exemption claimed on the tax return.
+
+Running our own analysis on the Rand Paul model, we found that a tax rate of 12.8% would suffice to meet the current tax revenue of our 2012 data.  In fact, our analysis showed that Paul's flat tax rate would have scored the U.S. government about $150 billion dollars more in tax revenue than what individuals actually paid in 2012.  
+
+What would we do with all of this money?  Perhaps this is part of Paul's plan to balance our budget, by ensuring that we will have plenty of money to spend.  But before we can conclude that, we better see how we would fare with his business tax being flat at 14.5% as well, which will be an analysis for another day.
+
+
+### Discussion
+Is blowing up our curent tax code and having a model so simple that your dog could understand it really worth it?  We've seen models that will probably make the rich even richer, and we've seen some models that the poor wouldn't think it's worth the paper that it's written on.  With a skeptical middle class being the dividing line, a drastic tax reform is really going to come down to keeping the lobbyists happy with sizeable enough deductions to offset all of those credits and deductions that we want to remove from the tax code.  
+
+Also, hanging in the balance with whether we get a big tax reform or not will be the potential effect that these proposed tax policies will have on the economy.  Certainly a low flat tax rate with big deductions will have a psychological effect that we will have more money in our pockets.  That would give us more room to consume and invest.  If the government were to also have plenty of money to spend, then economic growth could almost be guaranteed.
+
+Just how much more money would you have (or not have) in your pockets under one of these tax models?  Go ahead and check for yourself...
+
+```{r, echo = FALSE, cache=FALSE}
+shinyApp(
+    ui = fluidPage(
+        fluidRow(
+            column(width=5,
+                   div(class="model-group",
+                       selectInput("taxModel", "Tax Model",
+                                   choices=c("Ben Carson's True Flat Tax",
+                                             "Rand Paul's Fair & Flat Tax",
+                                             "Post Card Tax Return (theoretical)")
+                       ),
+                       conditionalPanel("input.taxModel == 'Ben Carson\\'s True Flat Tax'",
+                                        numericInput("grossInc", "Enter your yearly gross income, i.e. every penny that you acquired in the previous year.", min=0, value=55000)),
+                       conditionalPanel("input.taxModel == 'Rand Paul\\'s Fair & Flat Tax'",
+                                        radioButtons("filingStatus", "Filing Status",
+                                                     choices=c("Single", "Married",
+                                                               "Head of Household")),
+                                        selectInput("dependents",
+                                                     "How many dependents will you claim?",
+                                                     choices=0:20, selected=2),
+                                        conditionalPanel("input.dependents > 0",
+                                                         selectInput("depAge",
+                                                                     "How many dependents are less than 17?",
+                                                                     choices=0:20), selected=2),
+                                        numericInput("grossSalary",
+                                                     "Enter your yearly gross salary and wages, i.e. probably the gross amount on your W-2 or 1099-Misc.",
+                                                     min=0, value=55000),
+                                        numericInput("interest",
+                                                     "How much intrest did you earn last year?",
+                                                     min=0, value=42),
+                                        numericInput("dividends", 
+                                                     "How much in dividends did you earn?", 
+                                                     min=0, value=250),
+                                        numericInput("capGains", 
+                                                     "Enter your net capital gains",
+                                                     value=500),
+                                        numericInput("rents",
+                                                     "Enter your net rents",
+                                                     value=4500),
+                                        numericInput("mortgage",
+                                                     "How much mortgage interest did you pay last year?",
+                                                     min=0,
+                                                     value=3100),
+                                        numericInput("charity",
+                                                     "How much in charitable contributions did you make? ",
+                                                     min=0, value=100)
+                                        
+                                        )
+                )
+            )
+        ),
+        uiOutput('bc'),
+        uiOutput('rp')
+    ),
+    
+    
+    server = function(input, output, session){
+        # currently selected tax model
+        curModel <- reactive({
+            switch(input$taxModel,
+                   "Ben Carson's True Flat Tax" = bcModel,
+                   "Rand Paul's Fair & Flat Tax" = rpModel)
+        })
+        output$bc <- renderUI({
+            if (curModel == bcModel)
+                withMathJax(helpText('Your expected tax is about ', scales::dollar("grossInc")))
+        })
+        output$rp <- renderUI({
+            if (curModel == rpModel)
+                withMathJax(helpText('Your expected tax is about ', scales::dollar("grossInc")+5000))
+        })
+    }
+)
+```
+
 
 [^1]: Wikipedia article on Flat Tax - https://en.wikipedia.org/wiki/Flat_tax
 [^2]: An Interview with Fox News's Chris Wallace - http://mediamatters.org/video/2015/05/10/foxs-chris-wallace-exposes-truth-behind-ben-car/203587
